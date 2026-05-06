@@ -89,7 +89,7 @@ st.sidebar.info(f"**Temperatures at {cursor_x:.1f} cm:**\n\n"
                 f"**Studied:** {ts_cursor:.1f} °C")
 
 # --- Plot 1: The Graph ---
-st.subheader("Temperature Distribution Graph")
+st.subheader("Temperature Distribution ")
 fig_graph, ax_graph = plt.subplots(figsize=(10, 5))
 ax_graph.plot(x_cm, temps_reference, label=fr"{material_name} Bar ($\chi$ = {MATERIALS[material_name]:.1f} W/m·K)", color="orange", linewidth=2)
 ax_graph.plot(x_cm, temps_studied, label=fr'Studied Bar ($\chi$ = {chi_studied:.1f} W/m·K)', color="green", linestyle="--", linewidth=2)
@@ -141,8 +141,8 @@ for tick in np.arange(0, length_cm + 0.001, 1):
 ax.axvline(cursor_x, color="#444444", linestyle=":", linewidth=1.5, zorder=4)
 
 # Draw Legends
-draw_temp_legend(ax, ref_edges, length_cm + 1.3, "Known temp band", 1.72)
-draw_temp_legend(ax, studied_edges, length_cm + 7.6, "Studied temp band", 1.72)
+draw_temp_legend(ax, ref_edges, length_cm + 1.3, "Known temps", 1.72)
+draw_temp_legend(ax, studied_edges, length_cm + 7.6, "Studied temps", 1.72)
 
 # Format Axes (Extended x-limit to fit the legends)
 ax.set_xlim(-4.5, length_cm + 15.0)
