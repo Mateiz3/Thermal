@@ -45,7 +45,7 @@ def red_heat_strip(temps, temp_edges):
     strip_row = palette[band_idx]
     return np.repeat(strip_row[np.newaxis, :, :], 20, axis=0)
 
-# --- Streamlit Sidebar Controls ---
+# --- Streamlit Sidebar ---
 st.sidebar.header("Simulation Parameters")
 t_ambient = st.sidebar.slider("Ambient (°C)", 0.0, 60.0, 24.0, 0.5)
 theta_0 = st.sidebar.slider("Heat Δθ₀ (°C)", 50.0, 400.0, 264.0, 1.0)
@@ -67,7 +67,7 @@ distances, temps_reference, temps_studied = make_data(
 )
 x_cm = distances * 100
 
-# --- Plot 1: The Graph ---
+# ---  The Graph ---
 st.subheader("Temperature Distribution Graph")
 fig_graph, ax_graph = plt.subplots(figsize=(10, 5))
 ax_graph.plot(x_cm, temps_reference, label=fr"{material_name} Bar ($\chi$ = {MATERIALS[material_name]:.1f} W/m·K)", color="orange", linewidth=2)
@@ -79,7 +79,7 @@ ax_graph.grid(True, alpha=0.5)
 ax_graph.legend()
 st.pyplot(fig_graph)
 
-# --- Plot 2: Physical Bar View ---
+# --- Physical Bar View ---
 st.subheader("Physical Bar View")
 fig_bars, ax = plt.subplots(figsize=(12, 5))
 ax.set_facecolor("#f5f5f5")
@@ -110,7 +110,7 @@ for tick in np.arange(0, length_cm + 0.001, 1):
     if tick % 10 == 0:
         ax.text(tick, 0.02, f"{int(tick)} cm", ha="center", va="top", fontsize=8)
 
-# Format Axes
+# Axes
 ax.set_xlim(-4.5, length_cm + 5.0)
 ax.set_ylim(-0.05, 1.95)
 ax.set_xticks([])
@@ -119,3 +119,4 @@ for spine in ax.spines.values():
     spine.set_visible(False)
 
 st.pyplot(fig_bars)
+
