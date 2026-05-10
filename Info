@@ -1,0 +1,24 @@
+How It Works
+
+This simulation models heat conduction through a metal bar in a stationary (steady) regime, where the temperature at any given point remains constant over time.
+​Exponential Decay: 
+As heat travels down the bar, energy is lost to the surrounding air. By integrating Fourier's Law, the temperature distribution is modeled as an exponential curve: \theta = \theta_0 e^{-ax}.
+​The Decay Parameter "a": 
+Calculated as a = \sqrt{\frac{\alpha P}{\chi S}}, represents the mathematical relation between heat lost to the environment (heat exchange coefficient \alpha, perimeter P) and heat traveling through the metal (thermal conductivity \chi, cross-section S).
+​Analysis: 
+This tool helps visualise these equations by mapping a known reference metal (e.g., Copper) against an unknown or studied material.
+
+
+
+The Software Architecture
+
+​The project is built as an event-driven desktop/web application:
+
+​Vectorized Mathematics:
+ Uses numpy to generate distance arrays and calculate the entire temperature gradient simultaneously, making the simulation mathematically instantaneous.
+
+​Dual Visualization: 
+Leverages matplotlib to render both a 2D cartesian plot and a custom physical representation using imshow to "paint" the mathematical temperature bands onto a 2D rectangle.
+
+​Event-Driven Interactivity:
+The GUI uses a central dictionary to manage the application's "state." It listens for user events (slider adjustments, mouse drags) then recalculates the physics arrays, and  redraws the canvas in real-time.
