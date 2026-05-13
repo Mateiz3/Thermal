@@ -5,13 +5,17 @@ import matplotlib
 from matplotlib.patches import Rectangle
 from matplotlib.widgets import Slider, Button, RadioButtons, TextBox
 
-# Prefer a GUI backend so plt.show() can open a window on desktop Linux.
+# Prefer a GUI backend when display + Tk stack are actually available.
+# If not, force Agg so the script falls back to saving PNGs.
 if os.environ.get("DISPLAY"):
     try:
+        import tkinter  # noqa: F401
+        from PIL import ImageTk  # noqa: F401
         matplotlib.use("TkAgg")
     except Exception:
-        # Keep Matplotlib's default backend if Tk is unavailable.
-        pass
+        matplotlib.use("Agg")
+else:
+    matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 
@@ -39,7 +43,8 @@ MATERIALS = {
     "Silver": 429.0,
 }
 default_material = "Copper"
-chi_studied = 373.482     # Calculated average for the studied bar
+DEFAULT_CHI_STUDIED = 373.482  # Calculated average for the studied bar (reset target when field is cleared)
+chi_studied = DEFAULT_CHI_STUDIED
 
 # Assumptions for physical dimensions to make the visualization work realistically
 radius = 0.01             # 1 cm radius
@@ -48,14 +53,18 @@ S = np.pi * radius**2     # Cross-section area
 alpha = 15.0              # convective heat transfer coefficient for air
 default_length_cm = 30.0
 heat_levels = 9
+temp_min_fixed = 0.0
+temp_max_fixed = 460.0
+fixed_temp_edges = np.linspace(temp_min_fixed, temp_max_fixed, heat_levels + 1)
 
 
 def band_colors(levels=heat_levels):
     values = np.linspace(0.0, 1.0, levels)
     colors = np.zeros((levels, 3))
-    colors[:, 0] = 0.30 + 0.70 * values
-    colors[:, 1] = 0.05 + 0.16 * (1.0 - values)
-    colors[:, 2] = 0.05 + 0.16 * (1.0 - values)
+    # Blue (cold) -> red (hot) gradient.
+    colors[:, 0] = 0.10 + 0.90 * values
+    colors[:, 1] = 0.05 + 0.10 * (1.0 - values)
+    colors[:, 2] = 0.95 - 0.90 * values
     return colors
 
 
@@ -63,6 +72,7 @@ def red_heat_strip(temps, temp_edges):
     """Create stepped red strip using explicit temperature bins."""
     palette = band_colors(len(temp_edges) - 1)
     band_idx = np.digitize(temps, temp_edges[1:-1], right=False)
+    band_idx = np.clip(band_idx, 0, len(palette) - 1)
     strip_row = palette[band_idx]
     strip = np.repeat(strip_row[np.newaxis, :, :], 20, axis=0)
     return strip
@@ -133,17 +143,15 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
     ax.add_patch(heater)
     ax.text(-2.25, 1.0, "HEAT\nSOURCE", color="white", ha="center", va="center", fontsize=9, fontweight="bold")
 
-    ref_edges = np.linspace(float(np.min(temps_reference)), float(np.max(temps_reference)), heat_levels + 1)
-    studied_edges = np.linspace(float(np.min(temps_studied)), float(np.max(temps_studied)), heat_levels + 1)
-    copper_img = ax.imshow(red_heat_strip(temps_reference, ref_edges), extent=[0, default_length_cm, 1.15, 1.55], aspect="auto", zorder=2)
-    studied_img = ax.imshow(red_heat_strip(temps_studied, studied_edges), extent=[0, default_length_cm, 0.45, 0.85], aspect="auto", zorder=2)
+    copper_img = ax.imshow(red_heat_strip(temps_reference, fixed_temp_edges), extent=[0, default_length_cm, 1.15, 1.55], aspect="auto", zorder=2)
+    studied_img = ax.imshow(red_heat_strip(temps_studied, fixed_temp_edges), extent=[0, default_length_cm, 0.45, 0.85], aspect="auto", zorder=2)
     copper_outline = Rectangle((0, 1.15), default_length_cm, 0.40, fill=False, edgecolor="black", lw=1.2, zorder=3)
     studied_outline = Rectangle((0, 0.45), default_length_cm, 0.40, fill=False, edgecolor="black", lw=1.2, zorder=3)
     ax.add_patch(copper_outline)
     ax.add_patch(studied_outline)
     copper_label = ax.text(default_length_cm / 2, 1.08, f"{default_material} bar", va="top", ha="center", fontsize=10, fontweight="bold")
     studied_label = ax.text(default_length_cm / 2, 0.38, "Studied bar", va="top", ha="center", fontsize=10, fontweight="bold")
-    heat_caption = ax.text(default_length_cm / 2, 1.78, "Red = hotter / Brown=colder", ha="center", fontsize=11, color="#8b0000", fontweight="bold")
+    heat_caption = ax.text(default_length_cm / 2, 1.78, "Red = hotter / Blue = colder", ha="center", fontsize=11, color="#8b0000", fontweight="bold")
 
     ruler_line, = ax.plot([0, default_length_cm], [0.15, 0.15], color="black", lw=1.3)
     ruler_ticks = []
@@ -201,7 +209,7 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
 
     draw_ruler(default_length_cm)
     draw_temp_legend(
-        ref_edges,
+        fixed_temp_edges,
         default_length_cm + 1.3,
         "known temperature band",
         1.72,
@@ -209,7 +217,7 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
         legend_labels_ref,
     )
     draw_temp_legend(
-        studied_edges,
+        fixed_temp_edges,
         default_length_cm + 7.6,
         "studied bar temperature band",
         1.72,
@@ -294,6 +302,7 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
         line_copper.set_data(x_cm_u, copper_u)
         line_copper.set_label(fr"{material_name} Bar ($\chi$ = {MATERIALS[material_name]:.1f} W/m·K)")
         line_studied.set_data(x_cm_u, studied_u)
+        line_studied.set_label(fr'Studied Bar ($\chi$ = {state["chi_studied"]:.1f} W/m·K)')
         ambient_line.set_ydata([ambient, ambient])
         ambient_line.set_label(f"Ambient Temp ({ambient:.1f}°C)")
         ax_graph.set_xlim(0, length_cm)
@@ -301,10 +310,8 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
         ax_graph.set_ylim(ambient - 5.0, y_max)
         ax_graph.legend()
 
-        ref_edges_u = np.linspace(float(np.min(copper_u)), float(np.max(copper_u)), heat_levels + 1)
-        studied_edges_u = np.linspace(float(np.min(studied_u)), float(np.max(studied_u)), heat_levels + 1)
-        copper_img.set_data(red_heat_strip(copper_u, ref_edges_u))
-        studied_img.set_data(red_heat_strip(studied_u, studied_edges_u))
+        copper_img.set_data(red_heat_strip(copper_u, fixed_temp_edges))
+        studied_img.set_data(red_heat_strip(studied_u, fixed_temp_edges))
         copper_img.set_extent([0, length_cm, 1.15, 1.55])
         studied_img.set_extent([0, length_cm, 0.45, 0.85])
         copper_outline.set_width(length_cm)
@@ -315,7 +322,7 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
         heat_caption.set_position((length_cm / 2, 1.78))
         draw_ruler(length_cm)
         draw_temp_legend(
-            ref_edges_u,
+            fixed_temp_edges,
             length_cm + 1.3,
             "known temperature band",
             1.72,
@@ -323,7 +330,7 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
             legend_labels_ref,
         )
         draw_temp_legend(
-            studied_edges_u,
+            fixed_temp_edges,
             length_cm + 7.6,
             "studied bar temperature band",
             1.72,
@@ -353,16 +360,20 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
 
     chi_submit_guard = {"ignore": False}
 
+    def set_chi_box_text(text):
+        """Update the TextBox without re-triggering on_submit side effects."""
+        chi_submit_guard["ignore"] = True
+        chi_box.set_val(text)
+        chi_submit_guard["ignore"] = False
+
     def on_studied_chi_submit(text):
         if chi_submit_guard["ignore"]:
             return
         cleaned = text.strip()
         if cleaned == "":
-            state["chi_studied"] = chi_studied
+            state["chi_studied"] = DEFAULT_CHI_STUDIED
             update(None)
-            chi_submit_guard["ignore"] = True
-            chi_box.set_val("")
-            chi_submit_guard["ignore"] = False
+            set_chi_box_text(f"{DEFAULT_CHI_STUDIED:.3f}")
             return
         try:
             value = float(cleaned)
@@ -370,14 +381,10 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
                 raise ValueError
             state["chi_studied"] = value
             update(None)
-            chi_submit_guard["ignore"] = True
-            chi_box.set_val("")
-            chi_submit_guard["ignore"] = False
+            set_chi_box_text(f"{value:.3f}")
         except ValueError:
             print("Invalid studied thermal conductivity. Enter a positive number or leave blank.", flush=True)
-            chi_submit_guard["ignore"] = True
-            chi_box.set_val("")
-            chi_submit_guard["ignore"] = False
+            set_chi_box_text(f"{state['chi_studied']:.3f}")
 
     chi_box.on_submit(on_studied_chi_submit)
 
@@ -386,25 +393,38 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
 
     save_button.on_clicked(on_save)
 
+    def cursor_x_from_event(event):
+        """Distance along the bar (cm) from a mouse event on either interactive axes."""
+        if event.xdata is None:
+            return None
+        if event.inaxes == ax_graph or event.inaxes == ax:
+            return float(event.xdata)
+        return None
+
     def on_press(event):
-        if event.inaxes == ax and event.xdata is not None:
+        x_cm_click = cursor_x_from_event(event)
+        if x_cm_click is not None:
             dragging["active"] = True
-            update_cursor(event.xdata)
+            update_cursor(x_cm_click)
             fig_graph.canvas.draw_idle()
             fig_bars.canvas.draw_idle()
 
     def on_motion(event):
-        if dragging["active"] and event.inaxes == ax and event.xdata is not None:
-            update_cursor(event.xdata)
+        if not dragging["active"]:
+            return
+        x_cm_move = cursor_x_from_event(event)
+        if x_cm_move is not None:
+            update_cursor(x_cm_move)
             fig_graph.canvas.draw_idle()
             fig_bars.canvas.draw_idle()
 
     def on_release(_event):
         dragging["active"] = False
 
-    fig_bars.canvas.mpl_connect("button_press_event", on_press)
-    fig_bars.canvas.mpl_connect("motion_notify_event", on_motion)
-    fig_bars.canvas.mpl_connect("button_release_event", on_release)
+    for _canvas in (fig_graph.canvas, fig_bars.canvas):
+        _canvas.mpl_connect("button_press_event", on_press)
+        _canvas.mpl_connect("motion_notify_event", on_motion)
+        _canvas.mpl_connect("button_release_event", on_release)
     update_cursor(cursor_state["x_cm"])
 
     plt.show()
@@ -438,16 +458,11 @@ else:
 
     fig_bars, ax = plt.subplots(figsize=(12, 5))
     ax.set_facecolor("#f5f5f5")
-    temp_edges = np.linspace(
-        float(min(np.min(temps_copper), np.min(temps_studied))),
-        float(max(np.max(temps_copper), np.max(temps_studied))),
-        heat_levels + 1,
-    )
     heater = Rectangle((-4.0, 0.35), 3.5, 1.3, facecolor="#555555", edgecolor="black", lw=1.5)
     ax.add_patch(heater)
     ax.text(-2.25, 1.0, "HEAT\nSOURCE", color="white", ha="center", va="center", fontsize=9, fontweight="bold")
-    ax.imshow(red_heat_strip(temps_copper, temp_edges), extent=[0, default_length_cm, 1.15, 1.55], aspect="auto", zorder=2)
-    ax.imshow(red_heat_strip(temps_studied, temp_edges), extent=[0, default_length_cm, 0.45, 0.85], aspect="auto", zorder=2)
+    ax.imshow(red_heat_strip(temps_copper, fixed_temp_edges), extent=[0, default_length_cm, 1.15, 1.55], aspect="auto", zorder=2)
+    ax.imshow(red_heat_strip(temps_studied, fixed_temp_edges), extent=[0, default_length_cm, 0.45, 0.85], aspect="auto", zorder=2)
     ax.add_patch(Rectangle((0, 1.15), default_length_cm, 0.40, fill=False, edgecolor="black", lw=1.2, zorder=3))
     ax.add_patch(Rectangle((0, 0.45), default_length_cm, 0.40, fill=False, edgecolor="black", lw=1.2, zorder=3))
     ax.plot([0, default_length_cm], [0.15, 0.15], color="black", lw=1.3)
@@ -456,7 +471,7 @@ else:
         ax.plot([tick, tick], [0.15, 0.15 - tick_size], color="black", lw=1.0)
         if tick % 10 == 0:
             ax.text(tick, 0.02, f"{int(tick)} cm", ha="center", va="top", fontsize=8)
-    ax.text(default_length_cm / 2, 1.78, "Redder = hotter region", ha="center", fontsize=11, color="#8b0000", fontweight="bold")
+    ax.text(default_length_cm / 2, 1.78, "Red = hotter / Blue = colder", ha="center", fontsize=11, color="#8b0000", fontweight="bold")
     ax.set_title("Physical Bar View: Heater, Temperature Bands, and Ruler", fontsize=13)
     ax.set_xlim(-4.5, default_length_cm + 6.0)
     ax.set_ylim(-0.05, 1.95)
