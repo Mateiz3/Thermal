@@ -118,21 +118,8 @@ st.sidebar.info(
 # --- Plot 1: The Graph ---
 st.subheader("Temperature Distribution ")
 fig_graph, ax_graph = plt.subplots(figsize=(10, 6))
-ax_graph.plot(
-    x_cm,
-    temps_reference,
-    label=fr"{material_name} Bar ($\chi$ = {MATERIALS[material_name]:.1f} W/m·K)",
-    color="orange",
-    linewidth=2,
-)
-ax_graph.plot(
-    x_cm,
-    temps_studied,
-    label=fr'Studied Bar ($\chi$ = {chi_studied:.1f} W/m·K)',
-    color="green",
-    linestyle="--",
-    linewidth=2,
-)
+ax_graph.plot(x_cm, temps_reference, label=f"{material_name} Bar (χ = {MATERIALS[material_name]:.1f} W/m·K)", color="orange", linewidth=2)
+ax_graph.plot(x_cm, temps_studied, label=f'Studied Bar (χ = {chi_studied:.1f} W/m·K)', color="green", linestyle="--", linewidth=2)
 
 ax_graph.axvline(cursor_x, color="#444444", linestyle=":", linewidth=1.5, label="Cursor Position")
 ax_graph.plot([cursor_x], [tc_cursor], "o", color="orange", markersize=8)
