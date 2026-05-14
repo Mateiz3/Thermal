@@ -180,13 +180,12 @@ for tick in np.arange(0, length_cm + 0.001, 1):
 
 ax.axvline(cursor_x, color="#444444", linestyle=":", linewidth=1.5, zorder=4)
 
-draw_temp_legend(ax, fixed_temp_edges, length_cm + 1.3, "known temperature band", 1.72)
-draw_temp_legend(ax, fixed_temp_edges, length_cm + 7.6, "studied bar temperature band", 1.72)
+draw_temp_legend(ax, fixed_temp_edges, length_cm + 1.3, "temperature ranges", 1.72)
 
 ax.text(length_cm / 2, 1.78, "Red = hotter / Blue = colder", ha="center", fontsize=11, color="#8b0000", fontweight="bold")
 
 ax.set_title("Physical Bar View: Heater, Temperature Bands, and Ruler", fontsize=13)
-ax.set_xlim(-4.5, length_cm + 21.0)
+ax.set_xlim(-4.5, length_cm + 12.0)
 ax.set_ylim(-0.05, 1.95)
 ax.set_xticks([])
 ax.set_yticks([])

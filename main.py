@@ -78,6 +78,33 @@ def red_heat_strip(temps, temp_edges):
     return strip
 
 
+def draw_temp_legend_lists(ax, temp_edges_local, x0, title, y_top, swatches, labels):
+    """Clear and redraw a temperature-band legend (swatches = Rectangle patches, labels = Text)."""
+    for swatch in swatches:
+        swatch.remove()
+    for label in labels:
+        label.remove()
+    swatches.clear()
+    labels.clear()
+
+    colors = band_colors(len(temp_edges_local) - 1)
+    title_text = ax.text(x0, y_top, title, fontsize=9, fontweight="bold", va="bottom")
+    labels.append(title_text)
+    for i in range(len(temp_edges_local) - 1):
+        y = (y_top - 0.14) - i * 0.12
+        swatch = Rectangle((x0, y), 0.9, 0.10, facecolor=colors[i], edgecolor="black", lw=0.5)
+        ax.add_patch(swatch)
+        label = ax.text(
+            x0 + 1.05,
+            y + 0.05,
+            f"{temp_edges_local[i]:.1f}-{temp_edges_local[i + 1]:.1f} °C",
+            va="center",
+            fontsize=7.5,
+        )
+        swatches.append(swatch)
+        labels.append(label)
+
+
 backend = matplotlib.get_backend().lower()
 non_gui_backends = {"agg", "pdf", "ps", "svg", "cairo", "template"}
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -158,8 +185,6 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
     ruler_labels = []
     legend_swatches_ref = []
     legend_labels_ref = []
-    legend_swatches_studied = []
-    legend_labels_studied = []
 
     def draw_ruler(length_cm):
         for tick_line in ruler_ticks:
@@ -182,50 +207,18 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
                 label = ax.text(tick, 0.02, f"{int(tick)} cm", ha="center", va="top", fontsize=8)
                 ruler_labels.append(label)
 
-    def draw_temp_legend(temp_edges_local, x0, title, y_top, swatches, labels):
-        for swatch in swatches:
-            swatch.remove()
-        for label in labels:
-            label.remove()
-        swatches.clear()
-        labels.clear()
-
-        colors = band_colors(len(temp_edges_local) - 1)
-        title_text = ax.text(x0, y_top, title, fontsize=9, fontweight="bold", va="bottom")
-        labels.append(title_text)
-        for i in range(len(temp_edges_local) - 1):
-            y = (y_top - 0.14) - i * 0.12
-            swatch = Rectangle((x0, y), 0.9, 0.10, facecolor=colors[i], edgecolor="black", lw=0.5)
-            ax.add_patch(swatch)
-            label = ax.text(
-                x0 + 1.05,
-                y + 0.05,
-                f"{temp_edges_local[i]:.1f}-{temp_edges_local[i + 1]:.1f} °C",
-                va="center",
-                fontsize=7.5,
-            )
-            swatches.append(swatch)
-            labels.append(label)
-
     draw_ruler(default_length_cm)
-    draw_temp_legend(
+    draw_temp_legend_lists(
+        ax,
         fixed_temp_edges,
         default_length_cm + 1.3,
-        "known temperature band",
+        "temperature ranges",
         1.72,
         legend_swatches_ref,
         legend_labels_ref,
     )
-    draw_temp_legend(
-        fixed_temp_edges,
-        default_length_cm + 7.6,
-        "studied bar temperature band",
-        1.72,
-        legend_swatches_studied,
-        legend_labels_studied,
-    )
     ax.set_title("Live Physical Bar View: Heater, Temperature Bands, and Ruler", fontsize=13)
-    ax.set_xlim(-4.5, default_length_cm + 21.0)
+    ax.set_xlim(-4.5, default_length_cm + 12.0)
     ax.set_ylim(-0.05, 1.95)
     ax.set_xticks([])
     ax.set_yticks([])
@@ -321,23 +314,16 @@ if os.environ.get("DISPLAY") and backend not in non_gui_backends:
         studied_label.set_position((length_cm / 2, 0.38))
         heat_caption.set_position((length_cm / 2, 1.78))
         draw_ruler(length_cm)
-        draw_temp_legend(
+        draw_temp_legend_lists(
+            ax,
             fixed_temp_edges,
             length_cm + 1.3,
-            "known temperature band",
+            "temperature ranges",
             1.72,
             legend_swatches_ref,
             legend_labels_ref,
         )
-        draw_temp_legend(
-            fixed_temp_edges,
-            length_cm + 7.6,
-            "studied bar temperature band",
-            1.72,
-            legend_swatches_studied,
-            legend_labels_studied,
-        )
-        ax.set_xlim(-4.5, length_cm + 21.0)
+        ax.set_xlim(-4.5, length_cm + 12.0)
 
         state["x_cm"] = x_cm_u
         state["temps_copper"] = copper_u
@@ -473,7 +459,18 @@ else:
             ax.text(tick, 0.02, f"{int(tick)} cm", ha="center", va="top", fontsize=8)
     ax.text(default_length_cm / 2, 1.78, "Red = hotter / Blue = colder", ha="center", fontsize=11, color="#8b0000", fontweight="bold")
     ax.set_title("Physical Bar View: Heater, Temperature Bands, and Ruler", fontsize=13)
-    ax.set_xlim(-4.5, default_length_cm + 6.0)
+    _headless_legend_swatches = []
+    _headless_legend_labels = []
+    draw_temp_legend_lists(
+        ax,
+        fixed_temp_edges,
+        default_length_cm + 1.3,
+        "temperature ranges",
+        1.72,
+        _headless_legend_swatches,
+        _headless_legend_labels,
+    )
+    ax.set_xlim(-4.5, default_length_cm + 12.0)
     ax.set_ylim(-0.05, 1.95)
     ax.set_xticks([])
     ax.set_yticks([])
